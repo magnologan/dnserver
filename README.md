@@ -1,9 +1,11 @@
 # dnserver
 
-Simple DNS server written in python for use in development and testing.
+A modification of samuelcolvin's simple DNS server written in python for use in development and testing.
 
 The DNS serves it's own records, if none are found it proxies the request to and upstream DNS server 
 eg. google at `8.8.8.8`.
+
+If the upstream can't find it, then return a spoofed record from the local zone (aka own records).
 
 You can setup records you want to serve with a custom `zones.txt` file, 
 see [example_zones.txt](example_zones.txt) for the format.
