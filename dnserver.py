@@ -7,6 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from textwrap import wrap
 from time import sleep
+from copy import copy
 
 from dnslib import DNSLabel, QTYPE, RR, dns
 from dnslib.proxy import ProxyResolver
@@ -135,8 +136,21 @@ class Resolver(ProxyResolver):
             return reply
 
         logger.info('no local zone found, proxying %s[%s]', request.q.qname, type_name)
-        return super().resolve(request, handler)
-
+        response = super().resolve(request, handler)
+        if response.header.get_rcode() == 3: #NXERROR
+            for record in self.records:
+                #Check the query type (e.g. A or MX) matches
+                if record.rr.rtype == response.q.qtype:
+                    newrec = copy(record.rr) #Copy the record so we can change it safely
+                    newrec.rname = request.q.qname #Overwrite the name with the request's name
+                    reply.add_answer(newrec)
+            if reply.rr:
+                logger.info('no proxying zone, returning spoof local zone %s[%s]', request.q.qname, type_name)
+                return reply
+            else:
+                return response
+        else:
+            return response
 
 def handle_sig(signum, frame):
     logger.info('pid=%d, got signal: %s, stopping...', os.getpid(), signal.Signals(signum).name)
